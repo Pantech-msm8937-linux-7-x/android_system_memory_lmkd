@@ -3647,7 +3647,7 @@ static void mainloop(void) {
                     poll_params.polling_interval_ms - delay : poll_params.polling_interval_ms;
 
                 /* Wait for events until the next polling timeout */
-                nevents = epoll_wait(epollfd, events, maxevents, delay);
+                nevents = epoll_wait(epollfd, events, MAX_EPOLL_EVENTS, delay);
 
                 /* Update current time after wait */
                 clock_gettime(CLOCK_MONOTONIC_COARSE, &curr_tm);
@@ -3662,7 +3662,7 @@ static void mainloop(void) {
                 clock_gettime(CLOCK_MONOTONIC_COARSE, &curr_tm);
                 delay = kill_timeout_ms - get_time_diff_ms(&last_kill_tm, &curr_tm);
                 /* Wait for pidfds notification or kill timeout to expire */
-                nevents = (delay > 0) ? epoll_wait(epollfd, events, maxevents, delay) : 0;
+                nevents = (delay > 0) ? epoll_wait(epollfd, events, MAX_EPOLL_EVENTS, delay) : 0;
                 if (nevents == 0) {
                     /* Kill notification timed out */
                     stop_wait_for_proc_kill(false);
@@ -3674,7 +3674,7 @@ static void mainloop(void) {
                 }
             } else {
                 /* Wait for events with no timeout */
-                nevents = epoll_wait(epollfd, events, maxevents, -1);
+                nevents = epoll_wait(epollfd, events, MAX_EPOLL_EVENTS, -1);
             }
         }
 
