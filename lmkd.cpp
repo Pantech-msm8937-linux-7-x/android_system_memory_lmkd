@@ -1575,6 +1575,18 @@ static void ctrl_data_handler(int data, uint32_t events,
     }
 }
 
+/*
+ * A dropped data connection. Not any EPOLLHUP: the pidfd of a killed process
+ * reports one too once the process is reaped, which taken for a data
+ * connection closed data_sock[0] (the connection of the activity manager),
+ * left the kill wait running until its timeout and counted maxevents down
+ * twice.
+ */
+static bool is_data_conn_hup(const struct epoll_event* evt) {
+    return (evt->events & EPOLLHUP) && evt->data.ptr &&
+           ((struct event_handler_info*)evt->data.ptr)->handler == ctrl_data_handler;
+}
+
 static int get_free_dsock() {
     for (int i = 0; i < MAX_DATA_CONN; i++) {
         if (data_sock[i].sock < 0) {
@@ -3693,7 +3705,7 @@ static void mainloop(void) {
          * In such cases it's essential to handle connection closures first.
          */
         for (i = 0, evt = &events[0]; i < nevents; ++i, evt++) {
-            if ((evt->events & EPOLLHUP) && evt->data.ptr) {
+            if (is_data_conn_hup(evt)) {
                 ALOGI("lmkd data connection dropped");
                 handler_info = (struct event_handler_info*)evt->data.ptr;
                 watchdog.start();
@@ -3707,7 +3719,7 @@ static void mainloop(void) {
             if (evt->events & EPOLLERR) {
                 ALOGD("EPOLLERR on event #%d", i);
             }
-            if (evt->events & EPOLLHUP) {
+            if (is_data_conn_hup(evt)) {
                 /* This case was handled in the first pass */
                 continue;
             }
